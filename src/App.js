@@ -40,6 +40,14 @@ const Select = styled.select`
   margin-left: 10px;
 `;
 
+const RadioGroup = styled.div`
+  margin-bottom: 10px;
+`;
+
+const RadioButton = styled.input`
+  margin-right: 5px;
+`;
+
 const Button = styled.button`
   padding: 10px 20px;
   font-size: 16px;
@@ -66,6 +74,7 @@ function App() {
   const [beforeSize, setBeforeSize] = useState(null);
   const [afterSize, setAfterSize] = useState(null);
   const [compressionTime, setCompressionTime] = useState(null);
+  const [compressPayload, setCompressPayload] = useState('yes'); // Default to 'yes'
 
   const handleJsonChange = (e) => {
     setJsonData(e.target.value);
@@ -73,6 +82,10 @@ function App() {
 
   const handleDataSizeChange = (e) => {
     setDataSize(Number(e.target.value));
+  };
+
+  const handleCompressionChange = (e) => {
+    setCompressPayload(e.target.value);
   };
 
   const sendData = async () => {
@@ -83,51 +96,55 @@ function App() {
       console.error('Invalid JSON:', error);
       return;
     }
-
+  
     // Generate rows based on the selected data size
-    data.rows = new Array(dataSize).fill(jsonData);
-
+    const rows = new Array(dataSize).fill(data);
+  
     // Convert data to JSON string
-    const dataString = JSON.stringify(data);
-
+    const dataToSend = JSON.stringify(rows);
+  console.log(dataToSend);
     // Measure size before compression in bytes
-    const beforeSizeBytes = new Blob([dataString]).size;
-
-    // Convert bytes to megabytes (MB)
+    const beforeSizeBytes = new Blob([dataToSend]).size;
     const beforeSizeMB = (beforeSizeBytes / (1024 * 1024)).toFixed(2);
     setBeforeSize(beforeSizeMB);
-
+  
+    let compressedData;
+    let timeTaken;
+  
     // Record the time before compression
     const startTime = performance.now();
-
-    // Compress the data
-    const compressedData = pako.deflate(dataString);
-
+  
+    if (compressPayload === 'yes') {
+      // Compress the data
+      compressedData = pako.deflate(dataToSend);
+    } else {
+      // Send data without compression
+      compressedData = dataToSend;
+    }
+  
     // Record the time after compression
     const endTime = performance.now();
-
-    // Calculate the time taken for compression in seconds
-    const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+    timeTaken = ((endTime - startTime) / 1000).toFixed(2);
     setCompressionTime(timeTaken);
-
+  
     // Measure size after compression in bytes
-    const afterSizeBytes = compressedData.length;
-
-    // Convert bytes to megabytes (MB)
+    const afterSizeBytes = compressPayload === 'yes' ? compressedData.length : beforeSizeBytes;
     const afterSizeMB = (afterSizeBytes / (1024 * 1024)).toFixed(2);
     setAfterSize(afterSizeMB);
-
-    // Send compressed data
+  
+    // Send data
     try {
-      const response = await fetch('http://localhost:3000/upload-compressed', {
+      console.log('compressPayload', compressPayload);
+      const response = await fetch('https://payload-compression-node.onrender.com/upload-compressed', {
         method: 'POST',
         headers: {
-          'Content-Encoding': 'deflate',
-          'Content-Type': 'application/octet-stream',
+          'Content-Type': compressPayload === 'yes' ? 'application/octet-stream' : 'application/json',
+          'Content-Encoding': compressPayload === 'yes' ? 'deflate' : '',
+          'X-Content-Compressed': compressPayload === 'yes' ? 'true' : 'false',
         },
-        body: compressedData,
+        body: compressPayload === 'yes' ? compressedData : dataToSend,
       });
-
+  
       const responseData = await response.text();
       console.log(responseData);
     } catch (error) {
@@ -146,6 +163,10 @@ function App() {
       <Label>
         Select Data Size:
         <Select value={dataSize} onChange={handleDataSizeChange}>
+        {/* <option value={1}>1</option>
+        <option value={100}>100</option>
+        <option value={500}>500</option>
+        <option value={1000}>1000</option> */}
           <option value={5000}>5000</option>
           <option value={20000}>20000</option>
           <option value={50000}>50000</option>
@@ -155,6 +176,28 @@ function App() {
         </Select>
       </Label>
       <br />
+      {/* <RadioGroup>
+        <Label>
+          <RadioButton
+            type="radio"
+            name="compressPayload"
+            value="yes"
+            checked={compressPayload === 'yes'}
+            onChange={handleCompressionChange}
+          />
+          Yes
+        </Label>
+        <Label>
+          <RadioButton
+            type="radio"
+            name="compressPayload"
+            value="no"
+            checked={compressPayload === 'no'}
+            onChange={handleCompressionChange}
+          />
+          No
+        </Label>
+      </RadioGroup> */}
       <Button onClick={sendData}>Send Data</Button>
       {beforeSize !== null && afterSize !== null && compressionTime !== null && (
         <Result>
