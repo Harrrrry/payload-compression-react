@@ -40,14 +40,6 @@ const Select = styled.select`
   margin-left: 10px;
 `;
 
-const RadioGroup = styled.div`
-  margin-bottom: 10px;
-`;
-
-const RadioButton = styled.input`
-  margin-right: 5px;
-`;
-
 const Button = styled.button`
   padding: 10px 20px;
   font-size: 16px;
@@ -74,7 +66,6 @@ function App() {
   const [beforeSize, setBeforeSize] = useState(null);
   const [afterSize, setAfterSize] = useState(null);
   const [compressionTime, setCompressionTime] = useState(null);
-  const [compressPayload, setCompressPayload] = useState('yes'); // Default to 'yes'
 
   const handleJsonChange = (e) => {
     setJsonData(e.target.value);
@@ -84,9 +75,6 @@ function App() {
     setDataSize(Number(e.target.value));
   };
 
-  const handleCompressionChange = (e) => {
-    setCompressPayload(e.target.value);
-  };
 
   const sendData = async () => {
     let data;
@@ -114,13 +102,7 @@ function App() {
     // Record the time before compression
     const startTime = performance.now();
   
-    if (compressPayload === 'yes') {
-      // Compress the data
-      compressedData = pako.deflate(dataToSend);
-    } else {
-      // Send data without compression
-      compressedData = dataToSend;
-    }
+    compressedData = pako.deflate(dataToSend);
   
     // Record the time after compression
     const endTime = performance.now();
@@ -128,21 +110,20 @@ function App() {
     setCompressionTime(timeTaken);
   
     // Measure size after compression in bytes
-    const afterSizeBytes = compressPayload === 'yes' ? compressedData.length : beforeSizeBytes;
+    const afterSizeBytes = compressedData.length
     const afterSizeMB = (afterSizeBytes / (1024 * 1024)).toFixed(2);
     setAfterSize(afterSizeMB);
   
     // Send data
     try {
-      console.log('compressPayload', compressPayload);
       const response = await fetch('https://payload-compression-node.onrender.com/upload-compressed', {
         method: 'POST',
         headers: {
-          'Content-Type': compressPayload === 'yes' ? 'application/octet-stream' : 'application/json',
-          'Content-Encoding': compressPayload === 'yes' ? 'deflate' : '',
-          'X-Content-Compressed': compressPayload === 'yes' ? 'true' : 'false',
+          'Content-Type': 'application/octet-stream',
+          'Content-Encoding': 'deflate',
+          'X-Content-Compressed': 'true',
         },
-        body: compressPayload === 'yes' ? compressedData : dataToSend,
+        body: compressedData,
       });
   
       const responseData = await response.text();
@@ -176,28 +157,6 @@ function App() {
         </Select>
       </Label>
       <br />
-      {/* <RadioGroup>
-        <Label>
-          <RadioButton
-            type="radio"
-            name="compressPayload"
-            value="yes"
-            checked={compressPayload === 'yes'}
-            onChange={handleCompressionChange}
-          />
-          Yes
-        </Label>
-        <Label>
-          <RadioButton
-            type="radio"
-            name="compressPayload"
-            value="no"
-            checked={compressPayload === 'no'}
-            onChange={handleCompressionChange}
-          />
-          No
-        </Label>
-      </RadioGroup> */}
       <Button onClick={sendData}>Send Data</Button>
       {beforeSize !== null && afterSize !== null && compressionTime !== null && (
         <Result>
