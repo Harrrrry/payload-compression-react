@@ -121,7 +121,6 @@ function App() {
         headers: {
           'Content-Type': 'application/octet-stream',
           'Content-Encoding': 'deflate',
-          'X-Content-Compressed': 'true',
         },
         body: compressedData,
       });
